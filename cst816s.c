@@ -1,5 +1,11 @@
 
 #include "cst816s.h"
+#include "esp_err.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "i2c_lock.h"
 
 
 static i2c_master_dev_handle_t dev_handle;
@@ -9,6 +15,9 @@ static SemaphoreHandle_t semaphore = NULL;
 
 static struct touch last_touch = { 0 };
 static uint8_t last_is_touched = 0;
+
+static uint8_t touch_take_fails = 0;
+static uint8_t touch_take_threshhold = 10;
 
 
 static void IRAM_ATTR isr_handler(void * args)
@@ -25,10 +34,25 @@ void get_touch(uint8_t * out_is_touched, struct touch * out_touch)
         *out_is_touched = last_is_touched;
         out_touch->x = last_touch.x;
         out_touch->y = last_touch.y;
+
+        touch_take_fails = 0;
         
         xSemaphoreGive(semaphore);
     }
-    // Don't overwrite anything if we can't get the semaphore.
+    else
+    {
+        // Attempt to take semaphore 10 times. Prevent touch lock up if we cant get it.
+        if (touch_take_fails > touch_take_threshhold)
+        {
+            touch_take_fails = 0;
+            *out_is_touched = 0;
+            return;
+        }
+        else
+        {
+            touch_take_fails += 1;
+        }
+    }
 }
 
 
@@ -52,7 +76,7 @@ void check_touch_task(void * args)
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(20));
+        vTaskDelay(pdMS_TO_TICKS(40));
     }
 }
 
@@ -111,8 +135,10 @@ uint16_t get_y_coordinate(void)
     uint8_t lower_buf[1] = { CST_LOWER_Y };
     uint8_t upper_buf[1] = { CST_UPPER_Y };
 
+    lock_i2c();
     i2c_master_transmit_receive(dev_handle, lower_buf, sizeof(lower_buf), &data[0], 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
     i2c_master_transmit_receive(dev_handle, upper_buf, sizeof(upper_buf), &data[1], 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
+    unlock_i2c();
 
     return (((data[1] & LOWER_4_BIT_MASK) << 8) | (data[0] << 0));
 }
@@ -125,8 +151,10 @@ uint16_t get_x_coordinate(void)
     uint8_t lower_buf[1] = { CST_LOWER_X };
     uint8_t upper_buf[1] = { CST_UPPER_X };
 
+    lock_i2c();
     i2c_master_transmit_receive(dev_handle, lower_buf, 1, &data[0], 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
     i2c_master_transmit_receive(dev_handle, upper_buf, 1, &data[1], 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
+    unlock_i2c();
 
     return (((data[1] & LOWER_4_BIT_MASK) << 8) | (data[0] << 0));
 }
@@ -138,7 +166,9 @@ uint8_t is_touched(void)
 
     uint8_t cmd[1] = { CST_FINGER_NUM };
 
+    lock_i2c();
     i2c_master_transmit_receive(dev_handle, cmd, 1, &data, 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
+    unlock_i2c();
 
     return data;
 }

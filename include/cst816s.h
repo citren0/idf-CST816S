@@ -2,13 +2,8 @@
 #ifndef CST816S_H_
 #define CST816S_H_
 
-#include "esp_err.h"
-#include "esp_log.h"
 #include "driver/i2c_master.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "driver/gpio.h"
-#include "freertos/queue.h"
 
 // Pin definition.
 #define CST_SCL_GPIO        GPIO_NUM_10
@@ -18,8 +13,8 @@
 
 // I2C Definition.
 #define CST_I2C_ADDR        0x15
-#define CST_I2C_FREQ        40000
-#define CST_I2C_TIMEOUT     100
+#define CST_I2C_FREQ        200000
+#define CST_I2C_TIMEOUT     1000
 
 // Registers.
 #define CST_LOWER_Y         ((uint8_t)0x06)

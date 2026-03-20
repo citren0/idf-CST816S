@@ -15,6 +15,7 @@ static SemaphoreHandle_t semaphore = NULL;
 
 static struct touch last_touch = { 0 };
 static uint8_t last_is_touched = 0;
+static uint8_t waiting_for_retouch = 0;
 
 static uint8_t touch_take_fails = 0;
 static uint8_t touch_take_threshhold = 10;
@@ -31,7 +32,8 @@ void get_touch(uint8_t * out_is_touched, struct touch * out_touch)
 {
     if (xSemaphoreTake(semaphore, 0))
     {
-        *out_is_touched = last_is_touched;
+        *out_is_touched = last_is_touched && !waiting_for_retouch; // Allow touches only when we arent waiting for a retouch.
+        waiting_for_retouch &= last_is_touched; // Unset waiting_for_retouch when we arent currently touching.
         out_touch->x = last_touch.x;
         out_touch->y = last_touch.y;
 
@@ -53,6 +55,13 @@ void get_touch(uint8_t * out_is_touched, struct touch * out_touch)
             touch_take_fails += 1;
         }
     }
+}
+
+
+// Useful for waking from sleep, where we dont want to 
+void require_retouch(void)
+{
+    last_is_touched = 1;
 }
 
 

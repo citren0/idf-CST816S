@@ -35,6 +35,7 @@ esp_err_t init_cst_interrupt(void);
 esp_err_t init_cst(i2c_master_bus_handle_t bus_handle);
 uint16_t get_y_coordinate(void);
 uint16_t get_x_coordinate(void);
+void require_retouch(void);
 void get_touch(uint8_t * out_is_touched, struct touch * out_touch);
 uint8_t is_touched(void);
 

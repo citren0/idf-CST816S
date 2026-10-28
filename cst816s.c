@@ -144,10 +144,13 @@ uint16_t get_y_coordinate(void)
     uint8_t lower_buf[1] = { CST_LOWER_Y };
     uint8_t upper_buf[1] = { CST_UPPER_Y };
 
-    lock_i2c();
+    BaseType_t did_lock = lock_i2c();
     i2c_master_transmit_receive(dev_handle, lower_buf, sizeof(lower_buf), &data[0], 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
     i2c_master_transmit_receive(dev_handle, upper_buf, sizeof(upper_buf), &data[1], 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
-    unlock_i2c();
+    if (did_lock == pdTRUE)
+    {
+        unlock_i2c();
+    }
 
     return (((data[1] & LOWER_4_BIT_MASK) << 8) | (data[0] << 0));
 }
@@ -160,10 +163,13 @@ uint16_t get_x_coordinate(void)
     uint8_t lower_buf[1] = { CST_LOWER_X };
     uint8_t upper_buf[1] = { CST_UPPER_X };
 
-    lock_i2c();
+    BaseType_t did_lock = lock_i2c();
     i2c_master_transmit_receive(dev_handle, lower_buf, 1, &data[0], 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
     i2c_master_transmit_receive(dev_handle, upper_buf, 1, &data[1], 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
-    unlock_i2c();
+    if (did_lock == pdTRUE)
+    {
+        unlock_i2c();
+    }
 
     return (((data[1] & LOWER_4_BIT_MASK) << 8) | (data[0] << 0));
 }
@@ -175,9 +181,12 @@ uint8_t is_touched(void)
 
     uint8_t cmd[1] = { CST_FINGER_NUM };
 
-    lock_i2c();
+    BaseType_t did_lock = lock_i2c();
     i2c_master_transmit_receive(dev_handle, cmd, 1, &data, 1, pdMS_TO_TICKS(CST_I2C_TIMEOUT));
-    unlock_i2c();
-
+    if (did_lock == pdTRUE)
+    {
+        unlock_i2c();
+    }
+    
     return data;
 }
